@@ -6,25 +6,25 @@ Built with **Python**, **Tkinter**, and **Pillow (PIL)**.
 
 ---
 
-## ✨ Features
+## Features
 
-- 🎴 Supports multiple card types:
+- Supports multiple card types:
   - Action cards
   - Blue item cards
   - Green item cards
   - Character cards (3–6 lives)
-- 🖼️ Import main artwork and optional expansion artwork
-- ♠ Card value & suit selection (or random)
-- 📝 Title, subtitle, author, and wrapped description text
-- 🎨 Optional vignette effect on artwork
-- 🔁 Automatic live preview while editing
-- 🖨️ Print-ready export at configurable DPI (default: 300 DPI)
-- 🃏 Optional card back generation
-- ⚙️ Centralized configuration via `config.py`
+- Import main artwork and optional expansion artwork
+- Card value & suit selection (or random)
+- Title, subtitle, author, and wrapped description text
+- Optional vignette effect on artwork
+- Automatic live preview while editing
+- Print-ready export at configurable DPI (default: 300 DPI)
+- Optional card back generation
+- Centralized configuration via `config.py`
 
 ---
 
-## 📦 Requirements
+## Requirements
 
 - Python **3.10+** recommended
 - Required Python packages:
@@ -37,7 +37,7 @@ Tkinter is included with most standard Python installations.
 
 ---
 
-## 🚀 Running the Application
+## Running the Application
 
 Clone or download the project, then run:
 
@@ -49,7 +49,7 @@ python main.py
 
 ---
 
-## 🧭 How It Works
+## How It Works
 
 1. Choose a **card type** (action, item, or character)
 2. Import **main artwork** (PNG or JPG)
@@ -68,7 +68,7 @@ Exported images are saved with the configured DPI for printing.
 
 ---
 
-## 🖨️ DPI & Physical Size
+## DPI & Physical Size
 
 Card dimensions are defined in **millimeters** and converted to pixels using:
 
@@ -88,7 +88,7 @@ inside `config.py`.
 
 ---
 
-## ⚙️ Configuration (`config.py`)
+## Configuration (`config.py`)
 
 All visual and layout settings are centralized:
 
@@ -112,39 +112,40 @@ Reload changes live using:
 
 ---
 
-## 📁 Project Structure (Typical)
+## Project Structure (Typical)
 
 ```
 project/
 ├── main.py
 ├── config.py
 ├── README.md
-├── templates/
-│   ├── action.png
-│   ├── blue.png
-│   ├── green.png
-│   └── character_*.png
-├── suits/
-│   ├── hearts.png
-│   ├── clubs.png
-│   ├── diamonds.png
-│   └── spades.png
-├── fonts/
-│   ├── title.ttf
-│   ├── subtitle.ttf
-│   └── body.ttf
-├── borders/
-│   └── border.png
-└── backs/
-    ├── back_playing.png
-    └── back_character.png
+├── resources/
+    ├──templates/
+    │   ├── action.png
+    │   ├── blue.png
+    │   ├── green.png
+    │   └── character_*.png
+    ├── suits/
+    │   ├── hearts.png
+    │   ├── clubs.png
+    │   ├── diamonds.png
+    │   └── spades.png
+    ├── fonts/
+    │   ├── title.ttf
+    │   ├── subtitle.ttf
+    │   └── body.ttf
+    ├── borders/
+    │   └── border.png
+    └── backs/
+        ├── back_playing.png
+        └── back_character.png
 ```
 
 Paths may vary depending on your setup.
 
 ---
 
-## 🧠 Notes & Tips
+## Notes & Tips
 
 - The preview is **scaled down** for screen display; exports are full resolution
 - Use high-resolution artwork for best print quality
@@ -153,13 +154,13 @@ Paths may vary depending on your setup.
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 This is a **fan-made tool** for personal and creative use. Bang! is a trademark of its respective owners.
 
 ---
 
-## 🛠️ Possible Future Improvements
+## Possible Future Improvements
 
 - Zoom slider for preview
 - Drag & drop artwork import
@@ -169,5 +170,5 @@ This is a **fan-made tool** for personal and creative use. Bang! is a trademark 
 
 ---
 
-Enjoy creating your custom Bang! cards 🤠🃏
+Enjoy creating your custom Bang! cards
 
