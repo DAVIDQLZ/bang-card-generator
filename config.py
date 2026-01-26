@@ -71,6 +71,8 @@ DEFAULT_EXP_ART_PATH = BASE_DIR / "resources" / "misc" / "krtek.png"
 
 # README file path
 README_PATH = BASE_DIR / "README.md"
+# Config file path
+CONFIG_PATH = BASE_DIR / "config.py"
 
 
 

@@ -42,7 +42,7 @@ Tkinter is included with most standard Python installations.
 Clone or download the project, then run:
 
 ```bash
-python main.py
+python BangCardGenerator.py
 ```
 
 (The filename may differ depending on how you saved the script.)

@@ -261,7 +261,7 @@ help_menu.add_command(label="Open README", command=lambda: __import__('webbrowse
 # Config menu
 config_menu = tk.Menu(menubar, tearoff=0)
 menubar.add_cascade(label="Config", menu=config_menu)
-config_menu.add_command(label="Edit config.py", command=lambda: __import__('subprocess').Popen(["notepad", './config.py']) if __import__('sys').platform == 'win32' else __import__('subprocess').Popen(['gedit', './config.py']))
+config_menu.add_command(label="Edit config.py", command=lambda: __import__('subprocess').Popen(["notepad", config.CONFIG_PATH.as_uri()]) if __import__('sys').platform == 'win32' else __import__('subprocess').Popen(['gedit', config.CONFIG_PATH.as_uri()]))
 config_menu.add_command(label="Reload Config", command=lambda: __import__('importlib').reload(config) and update_image())
 
 # Upper frame for settings
