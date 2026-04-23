@@ -457,8 +457,9 @@ class BangCardGeneratorApp:
         self.image_label = tk.Label(lower_frame, text="Card Preview")
         self.image_label.pack()
 
-        # Export button
-        tk.Button(control_buttons_frame, text="Export Card as..", command=self.save_image, width=20, height=2).pack(pady=10)
+        # Export buttons
+        tk.Button(control_buttons_frame, text="Export Card as..", command=self.save_image, width=20, height=2).pack(side=tk.LEFT, pady=10, padx=(0, 5))
+        tk.Button(control_buttons_frame, text="Export All Cards", command=self.save_all_cards, width=20, height=2).pack(side=tk.LEFT, pady=10)
 
         # Bindings
         self.titleGUI.bind("<KeyRelease>", lambda e: self._on_field_change())
@@ -550,6 +551,32 @@ class BangCardGeneratorApp:
             return_pil=True,
         )
         card.save(file_path, dpi=(config.DPI, config.DPI))
+
+    def save_all_cards(self):
+        if not self.cards:
+            return
+        directory = filedialog.askdirectory(title="Select export directory")
+        if not directory:
+            return
+        output_dir = Path(directory)
+        for i, card in enumerate(self.cards):
+            title = card.get("title") or f"card_{i + 1}"
+            safe_title = "".join(c if c.isalnum() or c in " _-" else "_" for c in title).strip() or f"card_{i + 1}"
+            file_path = output_dir / f"{safe_title}.png"
+            img = generate_card(
+                card.get("card_type", 0),
+                card.get("art_path", str(config.DEFAULT_ART_PATH)),
+                card.get("card_value", "Random"),
+                card.get("card_suit", 0),
+                card.get("title", ""),
+                card.get("subtitle", ""),
+                card.get("author", ""),
+                card.get("description", ""),
+                card.get("back_card", True),
+                card.get("expansion_art_path") or None,
+                return_pil=True,
+            )
+            img.save(str(file_path), dpi=(config.DPI, config.DPI))
 
     def toggle_value_suit_visibility(self):
         if self.cardTypeGUI.get() in [0, 1, 2]:
