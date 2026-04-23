@@ -518,6 +518,11 @@ class BangCardGeneratorApp:
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
 
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Import Cards…", command=self._import_cards)
+        file_menu.add_command(label="Export Card List…", command=self._export_card_list)
+
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="Open README",
@@ -617,6 +622,44 @@ class BangCardGeneratorApp:
                 return_pil=True,
             )
             img.save(str(file_path), dpi=(config.DPI, config.DPI))
+
+    def _import_cards(self):
+        from tkinter import messagebox
+        file_path = filedialog.askopenfilename(
+            title="Import Cards",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+        )
+        if not file_path:
+            return
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                imported = json.load(f)
+            if not isinstance(imported, list):
+                messagebox.showerror("Import Error", "File does not contain a valid card list.")
+                return
+        except (json.JSONDecodeError, OSError) as e:
+            messagebox.showerror("Import Error", f"Could not read file:\n{e}")
+            return
+        self.cards.extend(imported)
+        self._save_cards_to_file()
+        self._refresh_listbox()
+        self._select_card(len(self.cards) - len(imported))
+        messagebox.showinfo("Import", f"Imported {len(imported)} card(s).")
+
+    def _export_card_list(self):
+        from tkinter import messagebox
+        if not self.cards:
+            messagebox.showinfo("Export Card List", "No cards to export.")
+            return
+        file_path = filedialog.asksaveasfilename(
+            title="Export Card List",
+            defaultextension=".json",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+        )
+        if not file_path:
+            return
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(self.cards, f, ensure_ascii=False, indent=2)
 
     def toggle_value_suit_visibility(self):
         if self.cardTypeGUI.get() in [0, 1, 2]:
