@@ -1,6 +1,8 @@
+import json
 import random
 import textwrap
 import tkinter as tk
+from pathlib import Path
 from tkinter import filedialog, ttk, Canvas
 from PIL import (
     Image,
@@ -11,6 +13,9 @@ from PIL import (
 )
 
 import config
+
+CARDS_FILE = Path(__file__).parent / "cards.json"
+
 
 def generate_card(card_type, art, cardValue, cardSuit, title, subtitle, author, description, backCardFlag, expansionArt, return_pil):
     ### 1. SETUP - fonts, sizes, positions, paths
@@ -87,7 +92,6 @@ def generate_card(card_type, art, cardValue, cardSuit, title, subtitle, author, 
         expArtImg = expArtImg.resize((expansionArtSize), Image.LANCZOS)
         faceCard.paste(expArtImg, (expArt_x, expArt_y), expArtImg)
 
-
     # Add card value and suit (if applicable)
     if cardValueSuitFlag:
         if cardValue == "Random":
@@ -119,7 +123,6 @@ def generate_card(card_type, art, cardValue, cardSuit, title, subtitle, author, 
     borderImg = Image.open(config.BORDER_PATH).convert("RGBA")
     borderImg = borderImg.resize((cardWidth, cardHeight), Image.LANCZOS)
     faceCard.paste(borderImg, (0,0), mask=borderImg)
-    ## Add description text
 
     # Guess max chars per line based on average character width
     avgCharWidth = fontBody.getlength("x")
@@ -132,7 +135,6 @@ def generate_card(card_type, art, cardValue, cardSuit, title, subtitle, author, 
 
     for para in paragraphs:
         if para.strip() == "":
-            # Empty line → vertical spacing
             current_y += lineHeight
             continue
 
@@ -161,7 +163,6 @@ def generate_card(card_type, art, cardValue, cardSuit, title, subtitle, author, 
         combinedCard.paste(faceCard, (0, 0), mask=faceCard)
 
     ### 4. RETURN RESULT
-    # Convert RGBA to RGB for PhotoImage compatibility
     if combinedCard.mode == 'RGBA':
         combinedCard = combinedCard.convert('RGB')
     photoimage = ImageTk.PhotoImage(combinedCard)
@@ -174,31 +175,197 @@ class BangCardGeneratorApp:
         self.root = root
         self.root.title("Bang! Card Generator")
         self.root.resizable(False, False)
+        self.cards = []
+        self.current_card_index = None
+        self._loading = False
+        self._load_cards_from_file()
         self._build_ui()
+        if self.cards:
+            self._select_card(0)
+        else:
+            self._add_card()
+
+    # ── persistence ───────────────────────────────────────────────────────────
+
+    def _load_cards_from_file(self):
+        if CARDS_FILE.exists():
+            with open(CARDS_FILE, "r", encoding="utf-8") as f:
+                self.cards = json.load(f)
+
+    def _save_cards_to_file(self):
+        with open(CARDS_FILE, "w", encoding="utf-8") as f:
+            json.dump(self.cards, f, ensure_ascii=False, indent=2)
+
+    # ── form <-> data ─────────────────────────────────────────────────────────
+
+    def _collect_form_data(self):
+        return {
+            "card_type": self.cardTypeGUI.get(),
+            "card_value": self.cardValueGUI.get(),
+            "card_suit": self.cardSuitGUI.get(),
+            "title": self.titleGUI.get(),
+            "subtitle": self.subtitleGUI.get(),
+            "author": self.authorGUI.get(),
+            "description": self.descripGUI.get("1.0", "end-1c"),
+            "back_card": self.backCardFlagGUI.get(),
+            "art_path": self.selectedArtPath.get(),
+            "expansion_art_path": self.selectedExpansionArtPath.get(),
+        }
+
+    def _fill_form(self, data):
+        self._loading = True
+        self.cardTypeGUI.set(data.get("card_type", 0))
+        self.cardValueGUI.set(data.get("card_value", "Random"))
+        self.cardSuitGUI.set(data.get("card_suit", 0))
+        self.titleGUI.delete(0, tk.END)
+        self.titleGUI.insert(0, data.get("title", ""))
+        self.subtitleGUI.delete(0, tk.END)
+        self.subtitleGUI.insert(0, data.get("subtitle", ""))
+        self.authorGUI.delete(0, tk.END)
+        self.authorGUI.insert(0, data.get("author", ""))
+        self.descripGUI.delete("1.0", tk.END)
+        self.descripGUI.insert("1.0", data.get("description", ""))
+        self.backCardFlagGUI.set(data.get("back_card", True))
+        self.selectedArtPath.set(data.get("art_path", str(config.DEFAULT_ART_PATH)))
+        self.selectedExpansionArtPath.set(data.get("expansion_art_path", ""))
+        self._loading = False
+        self.toggle_value_suit_visibility()
         self.update_image()
+
+    # ── card list management ──────────────────────────────────────────────────
+
+    def _refresh_listbox(self):
+        self.cards_listbox.delete(0, tk.END)
+        for card in self.cards:
+            self.cards_listbox.insert(tk.END, card.get("title") or "Untitled")
+        if self.current_card_index is not None:
+            self.cards_listbox.selection_set(self.current_card_index)
+            self.cards_listbox.see(self.current_card_index)
+
+    def _add_card(self):
+        new_card = {
+            "card_type": 0,
+            "card_value": "Random",
+            "card_suit": 0,
+            "title": "New Card",
+            "subtitle": "",
+            "author": "",
+            "description": "",
+            "back_card": True,
+            "art_path": str(config.DEFAULT_ART_PATH),
+            "expansion_art_path": "",
+        }
+        self.cards.append(new_card)
+        self.current_card_index = len(self.cards) - 1
+        self._refresh_listbox()
+        self._fill_form(new_card)
+        self._save_cards_to_file()
+
+    def _delete_card(self):
+        if self.current_card_index is None:
+            return
+        self.cards.pop(self.current_card_index)
+        if not self.cards:
+            self.current_card_index = None
+            self._add_card()
+            return
+        self.current_card_index = min(self.current_card_index, len(self.cards) - 1)
+        self._refresh_listbox()
+        self._fill_form(self.cards[self.current_card_index])
+        self._save_cards_to_file()
+
+    def _select_card(self, index):
+        self.current_card_index = index
+        self.cards_listbox.selection_clear(0, tk.END)
+        self.cards_listbox.selection_set(index)
+        self.cards_listbox.see(index)
+        self._fill_form(self.cards[index])
+
+    def _on_card_select(self, event):
+        selection = self.cards_listbox.curselection()
+        if not selection:
+            return
+        index = selection[0]
+        if index == self.current_card_index:
+            return
+        self._select_card(index)
+
+    def _autosave(self):
+        if self._loading or self.current_card_index is None:
+            return
+        data = self._collect_form_data()
+        self.cards[self.current_card_index] = data
+        self.cards_listbox.delete(self.current_card_index)
+        self.cards_listbox.insert(self.current_card_index, data.get("title") or "Untitled")
+        self.cards_listbox.selection_set(self.current_card_index)
+        self._save_cards_to_file()
+
+    def _on_field_change(self):
+        self._autosave()
+        self.update_image()
+
+    def _on_card_type_change(self):
+        self.toggle_value_suit_visibility()
+        self._on_field_change()
+
+    # ── UI building ───────────────────────────────────────────────────────────
 
     def _build_ui(self):
         self._build_menu()
 
-        # Upper frame for settings
-        upper_frame = tk.Frame(self.root, width=config.SCREEN_SIZE[0])
+        main_frame = tk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        sidebar_frame = tk.Frame(main_frame, width=180, relief=tk.RIDGE, bd=1)
+        sidebar_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 0), pady=10)
+        sidebar_frame.pack_propagate(False)
+        self._build_sidebar(sidebar_frame)
+
+        content_frame = tk.Frame(main_frame)
+        content_frame.pack(side=tk.LEFT, fill=tk.BOTH)
+        self._build_content(content_frame)
+
+    def _build_sidebar(self, parent):
+        tk.Label(parent, text="Cards", font=("", 10, "bold")).pack(pady=(8, 4))
+
+        list_frame = tk.Frame(parent)
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=5)
+
+        scrollbar = tk.Scrollbar(list_frame, orient=tk.VERTICAL)
+        self.cards_listbox = tk.Listbox(
+            list_frame,
+            yscrollcommand=scrollbar.set,
+            selectmode=tk.SINGLE,
+            activestyle="none",
+        )
+        scrollbar.config(command=self.cards_listbox.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.cards_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.cards_listbox.bind("<<ListboxSelect>>", self._on_card_select)
+
+        btn_frame = tk.Frame(parent)
+        btn_frame.pack(fill=tk.X, padx=5, pady=5)
+        tk.Button(btn_frame, text="+ New", command=self._add_card, width=7).pack(side=tk.LEFT)
+        tk.Button(btn_frame, text="Delete", command=self._delete_card, width=7).pack(side=tk.RIGHT)
+
+    def _build_content(self, parent):
+        upper_frame = tk.Frame(parent, width=config.SCREEN_SIZE[0])
         upper_frame.pack(side=tk.TOP, fill=tk.Y, padx=10, pady=10)
 
-        canvas = Canvas(self.root, width=config.SCREEN_SIZE[0], height=2)
+        canvas = Canvas(parent, width=config.SCREEN_SIZE[0], height=2)
         canvas.pack()
         canvas.pack_propagate(False)
         canvas.create_line(0, 2, config.SCREEN_SIZE[0], 2)
 
-        control_buttons_frame = tk.Frame(self.root, width=config.SCREEN_SIZE[0], height=50)
+        control_buttons_frame = tk.Frame(parent, width=config.SCREEN_SIZE[0], height=50)
         control_buttons_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
 
-        canvas = Canvas(self.root, width=config.SCREEN_SIZE[0], height=2)
-        canvas.pack_propagate(False)
-        canvas.pack()
-        canvas.create_line(0, 2, config.SCREEN_SIZE[0], 2)
+        canvas2 = Canvas(parent, width=config.SCREEN_SIZE[0], height=2)
+        canvas2.pack_propagate(False)
+        canvas2.pack()
+        canvas2.create_line(0, 2, config.SCREEN_SIZE[0], 2)
 
-        # Lower frame for image
-        lower_frame = tk.Frame(self.root, width=config.SCREEN_SIZE[0])
+        lower_frame = tk.Frame(parent, width=config.SCREEN_SIZE[0])
         lower_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
 
         cardtype_frame = tk.Frame(upper_frame)
@@ -209,9 +376,9 @@ class BangCardGeneratorApp:
         # Card type
         tk.Label(cardtype_frame, text="Choose card type:").pack(anchor=tk.W, pady=(10, 0))
         self.cardTypeGUI = tk.IntVar(value=0)
-        tk.Radiobutton(cardtype_frame, text="Action Card",            variable=self.cardTypeGUI, value=0).pack(anchor=tk.W)
-        tk.Radiobutton(cardtype_frame, text="Blue Item Card",         variable=self.cardTypeGUI, value=1).pack(anchor=tk.W)
-        tk.Radiobutton(cardtype_frame, text="Green Item Card",        variable=self.cardTypeGUI, value=2).pack(anchor=tk.W)
+        tk.Radiobutton(cardtype_frame, text="Action Card",              variable=self.cardTypeGUI, value=0).pack(anchor=tk.W)
+        tk.Radiobutton(cardtype_frame, text="Blue Item Card",           variable=self.cardTypeGUI, value=1).pack(anchor=tk.W)
+        tk.Radiobutton(cardtype_frame, text="Green Item Card",          variable=self.cardTypeGUI, value=2).pack(anchor=tk.W)
         tk.Radiobutton(cardtype_frame, text="Character Card - 3 lives", variable=self.cardTypeGUI, value=3).pack(anchor=tk.W)
         tk.Radiobutton(cardtype_frame, text="Character Card - 4 lives", variable=self.cardTypeGUI, value=4).pack(anchor=tk.W)
         tk.Radiobutton(cardtype_frame, text="Character Card - 5 lives", variable=self.cardTypeGUI, value=5).pack(anchor=tk.W)
@@ -220,7 +387,7 @@ class BangCardGeneratorApp:
         # Artwork
         tk.Label(art_frame, text="Choose artwork:").pack(anchor=tk.W, pady=(10, 0))
         tk.Label(art_frame, text="Upload artwork file (.png, .jpg):").pack(anchor=tk.W, pady=(10, 0))
-        self.selectedArtPath = tk.StringVar(value=config.DEFAULT_ART_PATH)
+        self.selectedArtPath = tk.StringVar(value=str(config.DEFAULT_ART_PATH))
         tk.Button(art_frame, text="Import Artwork", command=lambda: self.choose_file(self.selectedArtPath)).pack(pady=10)
         tk.Label(art_frame, textvariable=self.selectedArtPath, wraplength=280, justify="left").pack(anchor=tk.W, pady=5)
 
@@ -255,31 +422,26 @@ class BangCardGeneratorApp:
         tk.Radiobutton(self.suits_frame, image=suits["clubs"],    variable=self.cardSuitGUI, value=1).pack(side=tk.LEFT, padx=2)
         tk.Radiobutton(self.suits_frame, image=suits["diamonds"], variable=self.cardSuitGUI, value=2).pack(side=tk.LEFT, padx=2)
         tk.Radiobutton(self.suits_frame, image=suits["spades"],   variable=self.cardSuitGUI, value=3).pack(side=tk.LEFT, padx=2)
-        # Keep references so images aren't garbage collected
         self.suits_frame._suit_images = suits
 
         # Title
         tk.Label(upper_frame, text="Card Title:").pack(anchor=tk.W, pady=(10, 0))
         self.titleGUI = tk.Entry(upper_frame, width=30)
-        self.titleGUI.insert(0, "Bang")
         self.titleGUI.pack(anchor=tk.W)
 
         # Subtitle
         tk.Label(upper_frame, text="Subtitle (Optional):").pack(anchor=tk.W, pady=(10, 0))
         self.subtitleGUI = tk.Entry(upper_frame, width=30)
-        self.subtitleGUI.insert(0, "Subtitle")
         self.subtitleGUI.pack(anchor=tk.W)
 
         # Author
         tk.Label(upper_frame, text="Author (Optional):").pack(anchor=tk.W, pady=(10, 0))
         self.authorGUI = tk.Entry(upper_frame, width=30)
-        self.authorGUI.insert(0, "Author")
         self.authorGUI.pack(anchor=tk.W)
 
         # Description
         tk.Label(upper_frame, text="Description:").pack(anchor=tk.W, pady=(10, 0))
         self.descripGUI = tk.Text(upper_frame, width=30, height=8, wrap="word")
-        self.descripGUI.insert("1.0", "Description text goes here.")
         self.descripGUI.pack(anchor=tk.W)
 
         # Card back
@@ -299,17 +461,16 @@ class BangCardGeneratorApp:
         tk.Button(control_buttons_frame, text="Export Card as..", command=self.save_image, width=20, height=2).pack(pady=10)
 
         # Bindings
-        self.titleGUI.bind("<KeyRelease>", lambda e: self.update_image())
-        self.subtitleGUI.bind("<KeyRelease>", lambda e: self.update_image())
-        self.authorGUI.bind("<KeyRelease>", lambda e: self.update_image())
-        self.descripGUI.bind("<KeyRelease>", lambda e: self.update_image())
-        self.card_value.bind("<<ComboboxSelected>>", lambda e: self.update_image())
-        self.cardSuitGUI.trace_add("write", lambda *args: self.update_image())
-        self.cardTypeGUI.trace_add("write", lambda *args: self.update_image())
-        self.cardTypeGUI.trace_add("write", lambda *args: self.toggle_value_suit_visibility())
-        self.backCardFlagGUI.trace_add("write", lambda *args: self.update_image())
-        self.selectedArtPath.trace_add("write", lambda *args: self.update_image())
-        self.selectedExpansionArtPath.trace_add("write", lambda *args: self.update_image())
+        self.titleGUI.bind("<KeyRelease>", lambda e: self._on_field_change())
+        self.subtitleGUI.bind("<KeyRelease>", lambda e: self._on_field_change())
+        self.authorGUI.bind("<KeyRelease>", lambda e: self._on_field_change())
+        self.descripGUI.bind("<KeyRelease>", lambda e: self._on_field_change())
+        self.card_value.bind("<<ComboboxSelected>>", lambda e: self._on_field_change())
+        self.cardSuitGUI.trace_add("write", lambda *args: self._on_field_change())
+        self.cardTypeGUI.trace_add("write", lambda *args: self._on_card_type_change())
+        self.backCardFlagGUI.trace_add("write", lambda *args: self._on_field_change())
+        self.selectedArtPath.trace_add("write", lambda *args: self._on_field_change())
+        self.selectedExpansionArtPath.trace_add("write", lambda *args: self._on_field_change())
 
     def _build_menu(self):
         import webbrowser

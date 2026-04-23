@@ -17,6 +17,9 @@ env/
 # PyCharm
 .idea/
 
+# User data
+cards.json
+
 # OS
 .DS_Store
 Thumbs.db
